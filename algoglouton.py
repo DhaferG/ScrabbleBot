@@ -10,7 +10,7 @@ def find_best_word(letters, dawg, letter_scores):
     # Parcours des mots dans le DAWG
     for length in range(1, len(letters) + 1):
          for word in generate_possible_words(letters, length):
-            if dawg.search(word):  # Vérifie si le mot existe dans le DAWG
+            if dawg.lookup(word):
                 score = calculate_word_score(word, letter_scores)
                 if score > max_score:
                     best_word = word
