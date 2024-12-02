@@ -41,12 +41,13 @@ class ScrabbleBoard:
 
     def place_letter(self, x, y, letter):
         """
-        Place une lettre à la position (x, y) si la case est vide.
+        Place une lettre à la position (x, y) si la case est vide ou contient la même lettre.
         """
-        if self.board[x][y] == '':
+        if self.board[x][y] == '' or self.board[x][y] == letter:
             self.board[x][y] = letter
         else:
-            raise ValueError(f"La case ({x}, {y}) est déjà occupée.")
+            raise ValueError(f"La case ({x}, {y}) est déjà occupée par une autre lettre.")
+
 
     def get_bonus(self, x, y):
         """
@@ -91,3 +92,35 @@ class ScrabbleBoard:
         """
         for row in self.board:
             print(' '.join(cell if cell else '.' for cell in row))
+
+    def place_word(self, word, start_x, start_y, direction):
+        """
+        Place un mot sur le plateau en utilisant `place_letter`.
+        
+        Args:
+            word (str): Le mot à placer.
+            start_x (int): Ligne de départ (0-14).
+            start_y (int): Colonne de départ (0-14).
+            direction (str): 'horizontal' ou 'vertical'.
+        
+        Raises:
+            ValueError: Si le mot dépasse les limites ou entre en conflit avec des lettres existantes.
+        """
+        dx, dy = (0, 1) if direction == "horizontal" else (1, 0)
+
+        for i, letter in enumerate(word):
+            x, y = start_x + i * dx, start_y + i * dy
+
+            # Vérification des limites du plateau
+            if not (0 <= x < 15 and 0 <= y < 15):
+                raise ValueError(f"Le mot dépasse les limites du plateau à la position ({x}, {y}).")
+
+            # Vérification des conflits avec les lettres existantes
+            if self.board[x][y] not in ('', letter):
+                raise ValueError(f"Conflit de lettre à la position ({x}, {y}).")
+
+        # Si tout va bien, place le mot
+        for i, letter in enumerate(word):
+            x, y = start_x + i * dx, start_y + i * dy
+            self.place_letter(x, y, letter)
+
