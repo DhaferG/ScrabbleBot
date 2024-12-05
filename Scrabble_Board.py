@@ -48,7 +48,12 @@ class ScrabbleBoard:
         else:
             raise ValueError(f"La case ({x}, {y}) est déjà occupée par une autre lettre.")
 
-
+    def is_letter_on_board(self, letter):
+        """Vérifie si une lettre est présente sur le plateau."""
+        for row in self.board:
+            if letter in row:
+                return True
+        return False
     def get_bonus(self, x, y):
         """
         Retourne le type de bonus pour une case donnée (ou None si pas de bonus).
@@ -123,4 +128,50 @@ class ScrabbleBoard:
         for i, letter in enumerate(word):
             x, y = start_x + i * dx, start_y + i * dy
             self.place_letter(x, y, letter)
+    def get_all_words_on_board(board):
+        """
+        Retourne tous les mots présents sur le plateau avec leur direction et position.
+
+        :param board: Instance de ScrabbleBoard.
+        :return: Liste de tuples (mot, direction, position).
+        """
+        words = []
+
+        # Parcourir les lignes (mots horizontaux)
+        for row_idx, row in enumerate(board.board):
+            current_word = ""
+            start_col = None
+            for col_idx, cell in enumerate(row):
+                if cell != '':  # Une lettre est présente
+                    if current_word == "":  # Début d'un nouveau mot
+                        start_col = col_idx
+                    current_word += cell
+                else:  # Une case vide, fin du mot
+                    if len(current_word) > 1:  # Ajouter les mots valides (au moins 2 lettres)
+                        words.append((current_word, "horizontal", (row_idx, start_col)))
+                    current_word = ""
+                    start_col = None
+            if len(current_word) > 1:  # Vérifier le dernier mot de la ligne
+                words.append((current_word, "horizontal", (row_idx, start_col)))
+
+        # Parcourir les colonnes (mots verticaux)
+        for col_idx in range(15):  # Le plateau Scrabble est de taille 15x15
+            current_word = ""
+            start_row = None
+            for row_idx in range(15):
+                cell = board.board[row_idx][col_idx]
+                if cell != '':  # Une lettre est présente
+                    if current_word == "":  # Début d'un nouveau mot
+                        start_row = row_idx
+                    current_word += cell
+                else:  # Une case vide, fin du mot
+                    if len(current_word) > 1:  # Ajouter les mots valides (au moins 2 lettres)
+                        words.append((current_word, "vertical", (start_row, col_idx)))
+                    current_word = ""
+                    start_row = None
+            if len(current_word) > 1:  # Vérifier le dernier mot de la colonne
+                words.append((current_word, "vertical", (start_row, col_idx)))
+
+        return words
+
 
