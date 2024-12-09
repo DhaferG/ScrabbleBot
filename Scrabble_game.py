@@ -1,6 +1,7 @@
 import Scrabble_Board
 from Tile import Tile
 from algoglouton import find_best_word
+from algoglouton import is_adjacent_word_in_same_direction
 from sauvegarde import build_or_load_dawg
 
 
@@ -39,8 +40,13 @@ class ScrabbleGame:
         return True, ""
 
     def is_valid_word(self, word, tiles):
-        """Vérifie si un mot peut être formé avec les lettres disponibles, y compris les lettres sur le plateau."""
-        tiles_list = list(tiles)
+        """bat
+        Vérifie si un mot peut être formé avec les lettres disponibles, y compris les lettres sur le plateau et les jokers.
+        :param word: Le mot proposé par le joueur.
+        :param tiles: Les lettres disponibles pour le joueur, avec les jokers représentés par "".
+        :return: True si le mot peut être formé, False sinon.
+        """
+        tiles_list = list(tiles)  # Copie des tuiles disponibles
         
         # Parcourir chaque lettre du mot proposé
         for letter in word:
@@ -50,19 +56,55 @@ class ScrabbleGame:
             elif self.board.is_letter_on_board(letter):
                 # Si la lettre est déjà sur le plateau, on la considère comme utilisée
                 pass
+            elif "" in tiles_list:
+                # Si un joker est disponible, on l'utilise comme cette lettre
+                tiles_list.remove("")
             else:
-                # Si la lettre n'est ni dans les tuiles du joueur ni sur le plateau, le mot est invalide
+                # Si la lettre n'est ni dans les tuiles du joueur, ni sur le plateau, ni remplaçable par un joker
                 return False
         return True
+    def is_connected_to_existing_word(self, word, row, col, direction):
+        """
+        Vérifie si le mot proposé par le joueur est connecté à un mot déjà présent sur le plateau.
+
+        :param word: Le mot proposé par le joueur.
+        :param row: La ligne de départ du mot.
+        :param col: La colonne de départ du mot.
+        :param direction: La direction du mot ("horizontal" ou "vertical").
+        :return: True si le mot est connecté à un mot existant, False sinon.
+        """
+        # Parcourir les lettres du mot et vérifier la connexion
+        for i, letter in enumerate(word):
+            # Calculer la position actuelle de la lettre
+            current_row = row + (i if direction == "vertical" else 0)
+            current_col = col + (i if direction == "horizontal" else 0)
+
+            # Vérifier si la case actuelle contient déjà une lettre
+            if self.board.board[current_row][current_col] != "":
+                return True
+
+            # Vérifier les cases adjacentes
+            adjacent_cells = []
+            if direction == "horizontal":
+                adjacent_cells = [
+                    (current_row - 1, current_col),  # Case au-dessus
+                    (current_row + 1, current_col),  # Case en-dessous
+                ]
+            elif direction == "vertical":
+                adjacent_cells = [
+                    (current_row, current_col - 1),  # Case à gauche
+                    (current_row, current_col + 1),  # Case à droite
+                ]
+
+            # Vérifier les lettres adjacentes
+            for r, c in adjacent_cells:
+                if 0 <= r < len(self.board.board) and 0 <= c < len(self.board.board[0]):
+                    if self.board.board[r][c] != "":
+                        return True
+
+        return False
 
 
-    def refill_tiles(self, tiles):
-        """Complète les tuiles d'un joueur jusqu'à en avoir 7, si possible."""
-        missing_tiles = 7 - len(tiles)
-        if missing_tiles > 0:
-            new_tiles = self.tile_manager.random_letters_in_tile(missing_tiles)
-            tiles += new_tiles
-        return tiles
     def is_first_turn_valid(self, word, start_row, start_col, direction):
         """
         Vérifie si le premier mot passe par la case centrale (7,7).
@@ -94,8 +136,15 @@ class ScrabbleGame:
             if i == 1:
                 if not self.is_first_turn_valid(word, row, col, direction):
                     print("Erreur : Le mot doit passer par la case centrale (7,7) au premier tour.")
+                    row = int(input("Entrez la postition (row): "))
+                    col = int(input("Entrez la postition (col): "))
+            if i>1:
+                if not self.is_connected_to_existing_word(word, row, col, direction):
+                    print("Erreur : Le mot doit être connecté à un mot existant sur le plateau.")
                     continue
-
+                if is_adjacent_word_in_same_direction(self.board,row,col,word,direction):
+                    print("Erreur : Vous avez collé un mot à un autre.")
+                    continue
             if not valid:
                 print(message)
                 continue
@@ -121,8 +170,7 @@ class ScrabbleGame:
         """Gère le tour de l'IA."""
         print(f"Lettres de l'IA : {self.ai_tiles}")
         best_word, max_score, best_position, best_direction = find_best_word(
-            self.board, self.dawg, self.ai_tiles, self.letter_scores
-        )
+            self.board, self.dawg, self.ai_tiles, self.letter_scores)
         if best_word:
             row, col = best_position
             self.board.place_word(best_word, row, col, best_direction)
@@ -175,3 +223,10 @@ class ScrabbleGame:
             self.check_game_over(score_human,score_human)
 
         print("\nMerci d'avoir joué à Scrabble !")
+    def refill_tiles(self, tiles):
+            """Complète les tuiles d'un joueur jusqu'à en avoir 7, si possible."""
+            missing_tiles = 7 - len(tiles)
+            if missing_tiles > 0:
+                new_tiles = self.tile_manager.random_letters_in_tile(missing_tiles)
+                tiles += new_tiles
+            return tiles

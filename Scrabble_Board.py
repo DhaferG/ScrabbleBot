@@ -41,12 +41,19 @@ class ScrabbleBoard:
 
     def place_letter(self, x, y, letter):
         """
-        Place une lettre à la position (x, y) si la case est vide.
+        Place une lettre à la position (x, y). Si la case est déjà occupée, 
+        vérifie si la lettre est identique. Sinon, soulève une exception.
         """
         if self.board[x][y] == '':
             self.board[x][y] = letter
+        elif self.board[x][y] == letter:
+            # La lettre correspond déjà à celle placée, pas besoin de changer.
+            pass
         else:
-            raise ValueError(f"La case ({x}, {y}) est déjà occupée.")
+            # La case est occupée par une lettre différente, conflit détecté.
+            raise ValueError(f"Conflit détecté : La case ({x}, {y}) contient déjà '{self.board[x][y]}', "
+                            f"impossible d'y placer '{letter}'.")
+
 
     def get_bonus(self, x, y):
         """
@@ -91,3 +98,92 @@ class ScrabbleBoard:
         """
         for row in self.board:
             print(' '.join(cell if cell else '.' for cell in row))
+    def get_all_words_on_board(self):
+        """
+        Retourne tous les mots présents sur le plateau avec leur direction et position.
+
+        :param board: Instance de ScrabbleBoard.
+        :return: Liste de tuples (mot, direction, position).
+        """
+        words = []
+
+        # Parcourir les lignes (mots horizontaux)
+        for row_idx, row in enumerate(self.board):
+            current_word = ""
+            start_col = None
+            for col_idx, cell in enumerate(row):
+                if cell != '':  # Une lettre est présente
+                    if current_word == "":  # Début d'un nouveau mot
+                        start_col = col_idx
+                    current_word += cell
+                else:  # Une case vide, fin du mot
+                    if len(current_word) > 1:  # Ajouter les mots valides (au moins 2 lettres)
+                        words.append((current_word, "horizontal", (row_idx, start_col)))
+                    current_word = ""
+                    start_col = None
+            if len(current_word) > 1:  # Vérifier le dernier mot de la ligne
+                words.append((current_word, "horizontal", (row_idx, start_col)))
+
+        # Parcourir les colonnes (mots verticaux)
+        for col_idx in range(15):  # Le plateau Scrabble est de taille 15x15
+            current_word = ""
+            start_row = None
+            for row_idx in range(15):
+                cell = self.board[row_idx][col_idx]
+                if cell != '':  # Une lettre est présente
+                    if current_word == "":  # Début d'un nouveau mot
+                        start_row = row_idx
+                    current_word += cell
+                else:  # Une case vide, fin du mot
+                    if len(current_word) > 1:  # Ajouter les mots valides (au moins 2 lettres)
+                        words.append((current_word, "vertical", (start_row, col_idx)))
+                    current_word = ""
+                    start_row = None
+            if len(current_word) > 1:  # Vérifier le dernier mot de la colonne
+                words.append((current_word, "vertical", (start_row, col_idx)))
+
+        return words
+    def place_word(self, word, start_x, start_y, direction):
+        """
+        Place un mot sur le plateau en utilisant `place_letter`.
+        
+        Args:
+            word (str): Le mot à placer.
+            start_x (int): Ligne de départ (0-14).
+            start_y (int): Colonne de départ (0-14).
+            direction (str): 'horizontal' ou 'vertical'.
+        
+        Raises:
+            ValueError: Si le mot dépasse les limites ou entre en conflit avec des lettres existantes.
+        """
+        dx, dy = (0, 1) if direction == "horizontal" else (1, 0)
+
+        for i, letter in enumerate(word):
+            x, y = start_x + i * dx, start_y + i * dy
+
+            # Vérification des limites du plateau
+            if not (0 <= x < 15 and 0 <= y < 15):
+                raise ValueError(f"Le mot dépasse les limites du plateau à la position ({x}, {y}).")
+
+            # Vérification des conflits avec les lettres existantes
+            if self.board[x][y] not in ('', letter):
+                raise ValueError(f"Conflit de lettre à la position ({x}, {y}).")
+
+        # Si tout va bien, place le mot
+        for i, letter in enumerate(word):
+            x, y = start_x + i * dx, start_y + i * dy
+            self.place_letter(x, y, letter)
+    def is_letter_on_board(self, letter):
+        """
+        Vérifie si une lettre spécifique est présente sur le plateau.
+        
+        Args:
+            letter (str): La lettre à rechercher.
+            
+        Returns:
+            bool: True si la lettre est présente sur le plateau, False sinon.
+        """
+        for row in self.board:
+            if letter in row:
+                return True
+        return False

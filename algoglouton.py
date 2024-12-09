@@ -46,26 +46,48 @@ def find_best_word(board, dawg, rack, letter_scores):
                     
                         # Vérifier si le mot peut être placé
                         if can_place_word(board, word, start_x, start_y, direction):
-                            score = board.calculate_word_score(word, start_x, start_y, direction, letter_scores)
-                        
-                            # Mettre à jour le meilleur mot si le score est supérieur
-                            if score > best_score:
-                                best_word = word
-                                best_score = score
-                                best_position = (start_x, start_y)
-                                best_direction = direction
-            for word in generate_possible_words(dawg, rack):
-                for x in range(15):
-                        for y in range(15):
-                            if can_place_word(board, word, x, y, direction):
-                                # Calculer le score du mot avec les bonus
-                                score = board.calculate_word_score(word, x, y, direction, letter_scores)
+                            # Vérification supplémentaire pour s'assurer qu'aucun mot existant ne sera collé dans la même direction
+                            if not is_adjacent_word_in_same_direction(board, start_x, start_y, word, direction):
+                                score = board.calculate_word_score(word, start_x, start_y, direction, letter_scores)
                                 # Mettre à jour le meilleur mot si le score est supérieur
                                 if score > best_score:
                                     best_word = word
                                     best_score = score
-                                    best_position = (x, y)
+                                    best_position = (start_x, start_y)
                                     best_direction = direction
+        for words in board.get_all_words_on_board():
+            for word in generate_possible_words_with_prefix(dawg,rack,words[0]):
+                if can_place_word(board, word, words[2][0], words[2][1], words[1]):
+                    # Calculer le score du mot avec les bonus
+                    score = board.calculate_word_score(word, words[2][0], words[2][1], words[1], letter_scores)
+                    # Mettre à jour le meilleur mot si le score est supérieur
+                    if score > best_score:
+                        best_word = word
+                        best_score = score
+                        best_position = (words[2][0], words[2][1])
+                        best_direction = words[1]
+            for word in generate_possible_words_with_suffix(dawg,rack,words[0]):
+                if words[1]=="horizontal":
+                    if can_place_word(board, word, words[2][0], words[2][1]-len(word)+len(words[0]), words[1]):
+                        # Calculer le score du mot avec les bonus
+                        score = board.calculate_word_score(word, words[2][0], words[2][1]-len(word)+len(words[0]), words[1], letter_scores)
+                        # Mettre à jour le meilleur mot si le score est supérieur
+                        if score > best_score:
+                            best_word = word
+                            best_score = score
+                            best_position = (words[2][0], words[2][1]-len(word)+len(words[0]))
+                            best_direction = words[1]
+                else:
+                    if can_place_word(board, word, words[2][0]-len(word)+len(words[0]), words[2][1], words[1]):
+                        # Calculer le score du mot avec les bonus
+                        score = board.calculate_word_score(word, words[2][0]-len(word)+len(words[0]), words[2][1], words[1], letter_scores)
+                        # Mettre à jour le meilleur mot si le score est supérieur
+                        if score > best_score:
+                            best_word = word
+                            best_score = score
+                            best_position = (words[2][0]-len(word)+len(words[0]), words[2][1])
+                            best_direction = words[1]
+                    
 
 
     return best_word, best_score, best_position, best_direction
@@ -110,6 +132,72 @@ def generate_possible_words_with_anchor(dawg, rack, anchor_letter):
             if dawg.lookup(word):
                 L.append(word)
     return L
+def generate_possible_words_with_prefix(dawg, rack, prefix):
+    """
+    Génère tous les mots possibles en ajoutant des lettres à un mot existant sur le plateau (préfixe).
+
+    :param dawg: DAWG contenant les mots valides.
+    :param rack: Liste des lettres disponibles pour le joueur.
+    :param prefix: Mot existant sur le plateau (préfixe).
+    :return: Liste de mots valides générés.
+    """
+    from itertools import permutations
+
+    valid_words = []
+
+    # Inclure toutes les permutations des lettres du rack, ajoutées au préfixe
+    for length in range(1, len(rack) + 1):  # Générer des mots de longueur croissante
+        for perm in permutations(rack, length):
+            candidate = prefix + ''.join(perm)  # Ajouter le préfixe au début
+            if dawg.lookup(candidate):  # Vérifier si le mot est valide dans le DAWG
+                valid_words.append(candidate)
+
+    return valid_words
+def generate_possible_words_with_suffix(dawg, rack, suffix):
+    """
+    Génère tous les mots possibles en ajoutant des lettres à un mot existant sur le plateau (suffixe).
+
+    :param dawg: DAWG contenant les mots valides.
+    :param rack: Liste des lettres disponibles pour le joueur.
+    :param prefix: Mot existant sur le plateau (suffixe).
+    :return: Liste de mots valides générés.
+    """
+    from itertools import permutations
+
+    valid_words = []
+
+    # Générer des suffixes
+    for length in range(1, len(rack) + 1):
+        for perm in permutations(rack, length):
+            candidate = ''.join(perm)
+            candidate = candidate + suffix   # Ajouter le suffixe après le mot existant
+            if dawg.lookup(candidate):  # Vérifier si le mot est valide
+                valid_words.append(candidate)
+
+    return valid_words
+
+def is_adjacent_word_in_same_direction(board, start_x, start_y, word, direction):
+    """
+    Vérifie si un mot placé collerait à un mot existant dans la même direction.
+    """
+    word_length = len(word)
+    if direction == "horizontal":
+        if start_y+word_length<15 :
+            if board.board[start_x][start_y+word_length] != "" :
+                return True
+        if start_y-1>=0:
+            if board.board[start_x][start_y-1]!="" :
+                return True
+
+    elif direction == "vertical":
+        if start_x-1>=0 :
+            if board.board[start_x-1][start_y] != "" :
+                return True
+        if start_x+word_length<15:
+            if board.board[start_x+word_length][start_y]!="" :
+                return True
+
+    return False
 
 def can_place_word(board, word, start_x, start_y, direction):
     """
@@ -122,6 +210,10 @@ def can_place_word(board, word, start_x, start_y, direction):
     :param direction: Direction ("horizontal" ou "vertical").
     :return: True si le mot peut être placé, False sinon.
     """
+    words_on_board = board.get_all_words_on_board()
+    for existing_word, dir, position in words_on_board:
+        if word == existing_word and position == (start_x, start_y) and direction == dir:
+            return False
     dx, dy = (0, 1) if direction == "horizontal" else (1, 0)
 
     for i, letter in enumerate(word):
