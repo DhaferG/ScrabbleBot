@@ -15,7 +15,7 @@ class Tile:
             "k": 1, "l": 4, "m": 2, "n": 6, "o": 8,
             "p": 2, "q": 1, "r": 6, "s": 4, "t": 6,
             "u": 4, "v": 2, "w": 2, "x": 1, "y": 2,
-            "z": 1, " ": 2  # Les tuiles blanches
+            "z": 1, " ": 0  # Les tuiles blanches
         }
         # Générer la liste complète du sac de lettres
         return [letter for letter, count in tile_distribution.items() for _ in range(count)]
@@ -42,3 +42,10 @@ class Tile:
         Renvoie les lettres restantes dans le sac.
         """
         return len(self.tile_bag)
+    def refill_tiles(self, tiles):
+        """Complète les tuiles d'un joueur jusqu'à en avoir 7, si possible."""
+        missing_tiles = 7 - len(tiles)
+        if missing_tiles > 0:
+            new_tiles = self.tile_manager.random_letters_in_tile(missing_tiles)
+            tiles += new_tiles
+        return tiles
