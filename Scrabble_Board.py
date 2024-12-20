@@ -1,14 +1,5 @@
-class ScrabbleBoard:
-    def __init__(self):
-        """
-        Initialise un plateau de Scrabble 15x15 avec des bonus prédéfinis.
-        """
-        # Plateau 15x15, chaque case contient soit une lettre, soit un bonus
-        self.board = [['' for _ in range(15)] for _ in range(15)]
-
-        # Bonus : (x, y) -> "bonus_type"
-        # "DL": Double Lettre, "TL": Triple Lettre, "DW": Double Mot, "TW": Triple Mot
-        self.bonus = {
+BOARD = [['' for _ in range(15)] for _ in range(15)]
+SCORE = {
     # Triple Word Score (TW)
     (0, 0): "TW", (0, 7): "TW", (0, 14): "TW",
     (7, 0): "TW", (7, 14): "TW",
@@ -38,6 +29,16 @@ class ScrabbleBoard:
     (12, 6): "DL", (12, 8): "DL",
     (14, 3): "DL", (14, 11): "DL",
 }
+class ScrabbleBoard:
+    def __init__(self):
+        """
+        Initialise un plateau de Scrabble 15x15 avec des bonus prédéfinis.
+        """
+        # Plateau 15x15, chaque case contient soit une lettre, soit un bonus
+        self.board = BOARD
+        # Bonus : (x, y) -> "bonus_type"
+        # "DL": Double Lettre, "TL": Triple Lettre, "DW": Double Mot, "TW": Triple Mot
+        self.bonus = SCORE
 
     def place_letter(self, x, y, letter):
         """

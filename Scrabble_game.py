@@ -1,4 +1,4 @@
-import Scrabble_Board
+from Scrabble_Board import ScrabbleBoard,SCORE
 from Tile import Tile
 from algoglouton import find_best_word
 from algoglouton import is_adjacent_word_in_same_direction
@@ -8,7 +8,7 @@ from sauvegarde import build_or_load_dawg
 class ScrabbleGame:
     def __init__(self, dictionary_file, save_file):
         # Initialisation des composants principaux
-        self.board = Scrabble_Board.ScrabbleBoard()
+        self.board = ScrabbleBoard()
         self.dawg = build_or_load_dawg(dictionary_file, save_file)
         self.tile_manager = Tile()
         self.letter_scores = {
@@ -22,14 +22,42 @@ class ScrabbleGame:
         self.human_tiles = self.tile_manager.random_letters_in_tile(7)
         self.ai_tiles = self.tile_manager.random_letters_in_tile(7)
         self.game_over = False
+    def __str__(self):
+        """Return a string representation of the board, suitable for human viewing."""
 
+        board_colors = {
+            "DL": (106, 30),
+            "TL": (44, 30),
+            "DW": (101, 30),
+            "TW": (41, 30),
+            "SL": (47, 30),
+            "STAR": (101, 30)
+        }
+
+        rows = []
+        for row in range(0, 15):
+            cols = []
+            for col in range(0, 15):
+                sq = self.board.board[row][col] if self.board.board[row][col]!=' ' else ' '
+                try:
+                    bg, fg = board_colors.get(SCORE[(row,col)])
+                except KeyError:
+                    bg,fg= board_colors.get("SL")
+                if sq.islower():
+                    bg, fg = (43, 30)
+
+                sq = u"\u001b[%d;%dm %s \u001b[0m" % (bg, fg, sq)
+                cols.append(sq)
+            rows.append("".join(cols))
+        return "\n".join(rows)
     def display_state(self):
-        """Affiche l'état actuel du plateau et des lettres du joueur."""
+        # """Affiche l'état actuel du plateau et des lettres du joueur."""
         print("\nÉtat actuel du plateau :")
-        self.board.display()
-        print(f"Lettres du joueur : {self.human_tiles}")
-        # Debug : Afficher les lettres de l'IA
-        # print(f"Lettres de l'IA : {self.ai_tiles}")
+        # self.board.display()
+        print(f"Lettres de l'IA2 : {self.human_tiles}")
+        # # Debug : Afficher les lettres de l'IA
+        print(f"Lettres de l'IA1 : {self.ai_tiles}")
+        print(self.__str__())
 
     def validate_word(self, word):
         """Vérifie si un mot est valide."""
@@ -166,9 +194,10 @@ class ScrabbleGame:
         return score_human
 
 
-    def play_ai_turn(self):
+    def play_ai_turn(self,tiles):
         """Gère le tour de l'IA."""
         print(f"Lettres de l'IA : {self.ai_tiles}")
+        self.display_state()
         best_word, max_score, best_position, best_direction = find_best_word(
             self.board, self.dawg, self.ai_tiles, self.letter_scores)
         if best_word:
@@ -223,6 +252,34 @@ class ScrabbleGame:
             self.check_game_over(score_human,score_human)
 
         print("\nMerci d'avoir joué à Scrabble !")
+    def play_AI_AI(self):
+        """Simulate an AI vs. AI game."""
+        round_num = 0
+        score_ai1 = 0
+        score_ai2 = 0
+
+        while not self.game_over:
+            round_num += 1
+            print(f"\n--- Round {round_num} ---")
+            
+            # AI 1's turn
+            print("\n--- AI Player 1's Turn ---")
+            score_ai1 += self.play_ai_turn(self.ai_tiles)
+            print(f"AI Player 1's Score: {score_ai1}")
+            self.check_game_over(score_ai1, score_ai2)
+            if self.game_over:
+                break
+
+            # AI 2's turn
+            print("\n--- AI Player 2's Turn ---")
+            score_ai2 += self.play_ai_turn(self.human_tiles)
+            print(f"AI Player 2's Score: {score_ai2}")
+            self.check_game_over(score_ai1, score_ai2)
+
+        # Final Results
+        print("\nGame Over! Final Results:")
+        self.calculate_final_scores(score_ai1, score_ai2)
+
     def refill_tiles(self, tiles):
             """Complète les tuiles d'un joueur jusqu'à en avoir 7, si possible."""
             missing_tiles = 7 - len(tiles)

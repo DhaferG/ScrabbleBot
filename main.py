@@ -6,4 +6,4 @@ if __name__ == "__main__":
     game = ScrabbleGame(dictionary_file="resources/twl06.txt", save_file="dawg.pkl")
     
     # Lancer la boucle principale du jeu
-    game.play()
+    game.play_AI_AI()
