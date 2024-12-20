@@ -6,9 +6,10 @@ from sauvegarde import build_or_load_dawg
 
 
 class ScrabbleGame:
-    def __init__(self, dictionary_file, save_file):
+    def __init__(self, dictionary_file, save_file, ai_vs_ai=False):
         # Initialisation des composants principaux
         self.board = ScrabbleBoard()
+        self.ai_vs_ai= ai_vs_ai
         self.dawg = build_or_load_dawg(dictionary_file, save_file)
         self.tile_manager = Tile()
         self.letter_scores = {
@@ -19,7 +20,10 @@ class ScrabbleGame:
             "u": 1, "v": 4, "w": 4, "x": 8, "y": 4, "z": 10,
             " ": 0  # Les tuiles blanches ont une valeur nulle
         }
-        self.human_tiles = self.tile_manager.random_letters_in_tile(7)
+        if ai_vs_ai:
+            self.ai_tiles2 =  self.tile_manager.random_letters_in_tile(7)
+        else:
+            self.human_tiles = self.tile_manager.random_letters_in_tile(7)
         self.ai_tiles = self.tile_manager.random_letters_in_tile(7)
         self.game_over = False
     def __str__(self):
@@ -45,19 +49,11 @@ class ScrabbleGame:
                     bg,fg= board_colors.get("SL")
                 if sq.islower():
                     bg, fg = (43, 30)
-
-                sq = u"\u001b[%d;%dm %s \u001b[0m" % (bg, fg, sq)
+                sq_display = f"{sq:^3}"
+                sq = u"\u001b[%d;%dm %s \u001b[0m" % (bg, fg, sq_display)
                 cols.append(sq)
             rows.append("".join(cols))
         return "\n".join(rows)
-    def display_state(self):
-        # """Affiche l'état actuel du plateau et des lettres du joueur."""
-        print("\nÉtat actuel du plateau :")
-        # self.board.display()
-        print(f"Lettres de l'IA2 : {self.human_tiles}")
-        # # Debug : Afficher les lettres de l'IA
-        print(f"Lettres de l'IA1 : {self.ai_tiles}")
-        print(self.__str__())
 
     def validate_word(self, word):
         """Vérifie si un mot est valide."""
@@ -153,7 +149,7 @@ class ScrabbleGame:
     def play_human_turn(self, i):
         """Gère le tour du joueur humain."""
         while True:
-            self.display_state()
+            print(f"Your tiles are {self.human_tiles}")
             word = input("Entrez un mot à placer : ").lower()
             direction = input("Entrez la direction (horizontal/vertical) : ").lower()
             row = int(input("Entrez la position (row) : "))
@@ -194,26 +190,23 @@ class ScrabbleGame:
         return score_human
 
 
-    def play_ai_turn(self,tiles):
-        """Gère le tour de l'IA."""
-        print(f"Lettres de l'IA : {self.ai_tiles}")
-        self.display_state()
+    def play_ai_turn(self,tiles, is_first_turn = False):
         best_word, max_score, best_position, best_direction = find_best_word(
-            self.board, self.dawg, self.ai_tiles, self.letter_scores)
+            self.board, self.dawg, tiles, self.letter_scores, is_first_turn=is_first_turn)
         if best_word:
             row, col = best_position
             self.board.place_word(best_word, row, col, best_direction)
             print(f"\nL'IA a placé le mot '{best_word}' avec un score de {max_score}.")
             for letter in best_word:
-                self.ai_tiles = self.ai_tiles.replace(letter, "", 1)
-            self.ai_tiles = self.refill_tiles(self.ai_tiles)
+                tiles = tiles.replace(letter, "", 1)
+            tiles = self.refill_tiles(tiles)
         else:
             print("\nL'IA n'a pas trouvé de mot valide à jouer.")
         return max_score
 
     def check_game_over(self,a,b):
         """Vérifie si le jeu est terminé."""
-        if not self.tile_manager.get_remaining_tiles() and not self.human_tiles and not self.ai_tiles:
+        if not self.tile_manager.get_remaining_tiles() and not self.ai_tiles and not self.ai_tiles2:
             self.game_over = True
             print("\nLe jeu est terminé !")
             print("Calcul des scores finaux...")
@@ -231,7 +224,7 @@ class ScrabbleGame:
         else:
             print("C'est une égalité ! Bien joué !")
 
-    def play(self):
+    def play_human_vs_AI(self):
         """Démarre le jeu."""
         i=0
         score_human=0
@@ -240,6 +233,7 @@ class ScrabbleGame:
             i+=1
             print("\n--- Tour n ",i, " ---")
             print("\n--- Tour du joueur humain ---")
+            print(self)
             score_human+=self.play_human_turn(i)
             print("Vous avez un score ",score_human)
             self.check_game_over(score_human,score_ia)
@@ -247,7 +241,8 @@ class ScrabbleGame:
                 break
 
             print("\n--- Tour de l'IA ---")
-            score_ia+=self.play_ai_turn()
+            print(self)
+            score_ia+=self.play_ai_turn(self.ai_tiles)
             print("L'IA a un score ",score_ia)
             self.check_game_over(score_human,score_human)
 
@@ -264,7 +259,12 @@ class ScrabbleGame:
             
             # AI 1's turn
             print("\n--- AI Player 1's Turn ---")
-            score_ai1 += self.play_ai_turn(self.ai_tiles)
+            print(f"\n--- AI Player 1's Tiles {self.ai_tiles} ---")
+            print(self)
+            if round_num==1:
+                score_ai1 += self.play_ai_turn(self.ai_tiles,True)
+            else:
+                score_ai1 += self.play_ai_turn(self.ai_tiles)
             print(f"AI Player 1's Score: {score_ai1}")
             self.check_game_over(score_ai1, score_ai2)
             if self.game_over:
@@ -272,7 +272,8 @@ class ScrabbleGame:
 
             # AI 2's turn
             print("\n--- AI Player 2's Turn ---")
-            score_ai2 += self.play_ai_turn(self.human_tiles)
+            print(f"\n--- AI Player 2's Tiles {self.ai_tiles2} ---")
+            score_ai2 += self.play_ai_turn(self.ai_tiles2)
             print(f"AI Player 2's Score: {score_ai2}")
             self.check_game_over(score_ai1, score_ai2)
 
@@ -287,3 +288,8 @@ class ScrabbleGame:
                 new_tiles = self.tile_manager.random_letters_in_tile(missing_tiles)
                 tiles += new_tiles
             return tiles
+    def play(self):
+        if self.ai_vs_ai:
+            self.play_AI_AI()
+        else:
+            self.play_human_vs_AI()

@@ -1,4 +1,4 @@
-def find_best_word(board, dawg, rack, letter_scores):
+def find_best_word(board, dawg, rack, letter_scores, is_first_turn=False):
     """
     Trouve le meilleur mot à jouer en fonction du plateau, du DAWG, et des lettres disponibles.
     
@@ -6,6 +6,7 @@ def find_best_word(board, dawg, rack, letter_scores):
     :param dawg: DAWG contenant les mots valides.
     :param rack: Liste des lettres disponibles pour le joueur.
     :param letter_scores: Dictionnaire des scores des lettres.
+    :param is_first_turn: Indique si c'est le premier tour du jeu (nécessite d'inclure la case centrale).
     :return: Tuple (mot, score, position, direction) représentant le meilleur mot trouvé.
     """
     best_word = None
@@ -13,82 +14,77 @@ def find_best_word(board, dawg, rack, letter_scores):
     best_position = None
     best_direction = None
 
-    # Identifier toutes les cases avec des lettres comme points d'ancrage
+    # Central square for the first turn
+    center_x, center_y = 7, 7
+
+    # Anchor points: all squares with existing letters
     anchor_points = [(x, y) for x in range(15) for y in range(15) if board.board[x][y] != '']
-    # Explorer tous les mots possibles
-    if anchor_points ==[] :
+
+    if is_first_turn:
+        # Special handling for the first turn
         for direction in ["horizontal", "vertical"]:
             for word in generate_possible_words(dawg, rack):
-                for x in range(15):
-                        for y in range(15):
-                            if can_place_word(board, word, x, y, direction):
-                                # Calculer le score du mot avec les bonus
-                                score = board.calculate_word_score(word, x, y, direction, letter_scores)
-                                # Mettre à jour le meilleur mot si le score est supérieur
-                                if score > best_score:
-                                    best_word = word
-                                    best_score = score
-                                    best_position = (x, y)
-                                    best_direction = direction
+                for index, letter in enumerate(word):
+                    # Position the word so that one of its letters lands on the center square
+                    start_x = center_x - index if direction == "vertical" else center_x
+                    start_y = center_y - index if direction == "horizontal" else center_y
+
+                    if can_place_word(board, word, start_x, start_y, direction):
+                        score = board.calculate_word_score(word, start_x, start_y, direction, letter_scores)
+                        if score > best_score:
+                            best_word = word
+                            best_score = score
+                            best_position = (start_x, start_y)
+                            best_direction = direction
     else:
+        # Normal turn logic
         for direction in ["horizontal", "vertical"]:
             for x, y in anchor_points:
-                anchor_letter = board.board[x][y].lower()  # Lettre sur la case d'ancrage
-                # Générer tous les mots possibles contenant la lettre d'ancrage
+                anchor_letter = board.board[x][y].lower()
                 for word in generate_possible_words_with_anchor(dawg, rack, anchor_letter):
                     if anchor_letter in word:
-                        # Trouver la position de l'anchor_letter dans le mot
                         anchor_index = word.index(anchor_letter)
-                    
-                        # Calculer la position de départ du mot
                         start_x = x - anchor_index if direction == "vertical" else x
                         start_y = y - anchor_index if direction == "horizontal" else y
-                    
-                        # Vérifier si le mot peut être placé
+
                         if can_place_word(board, word, start_x, start_y, direction):
-                            # Vérification supplémentaire pour s'assurer qu'aucun mot existant ne sera collé dans la même direction
                             if not is_adjacent_word_in_same_direction(board, start_x, start_y, word, direction):
                                 score = board.calculate_word_score(word, start_x, start_y, direction, letter_scores)
-                                # Mettre à jour le meilleur mot si le score est supérieur
                                 if score > best_score:
                                     best_word = word
                                     best_score = score
                                     best_position = (start_x, start_y)
                                     best_direction = direction
+
         for words in board.get_all_words_on_board():
-            for word in generate_possible_words_with_prefix(dawg,rack,words[0]):
+            for word in generate_possible_words_with_prefix(dawg, rack, words[0]):
                 if can_place_word(board, word, words[2][0], words[2][1], words[1]):
-                    # Calculer le score du mot avec les bonus
                     score = board.calculate_word_score(word, words[2][0], words[2][1], words[1], letter_scores)
-                    # Mettre à jour le meilleur mot si le score est supérieur
                     if score > best_score:
                         best_word = word
                         best_score = score
                         best_position = (words[2][0], words[2][1])
                         best_direction = words[1]
-            for word in generate_possible_words_with_suffix(dawg,rack,words[0]):
-                if words[1]=="horizontal":
-                    if can_place_word(board, word, words[2][0], words[2][1]-len(word)+len(words[0]), words[1]):
-                        # Calculer le score du mot avec les bonus
-                        score = board.calculate_word_score(word, words[2][0], words[2][1]-len(word)+len(words[0]), words[1], letter_scores)
-                        # Mettre à jour le meilleur mot si le score est supérieur
+
+            for word in generate_possible_words_with_suffix(dawg, rack, words[0]):
+                if words[1] == "horizontal":
+                    if can_place_word(board, word, words[2][0], words[2][1] - len(word) + len(words[0]), words[1]):
+                        score = board.calculate_word_score(word, words[2][0], words[2][1] - len(word) + len(words[0]),
+                                                           words[1], letter_scores)
                         if score > best_score:
                             best_word = word
                             best_score = score
-                            best_position = (words[2][0], words[2][1]-len(word)+len(words[0]))
+                            best_position = (words[2][0], words[2][1] - len(word) + len(words[0]))
                             best_direction = words[1]
                 else:
-                    if can_place_word(board, word, words[2][0]-len(word)+len(words[0]), words[2][1], words[1]):
-                        # Calculer le score du mot avec les bonus
-                        score = board.calculate_word_score(word, words[2][0]-len(word)+len(words[0]), words[2][1], words[1], letter_scores)
-                        # Mettre à jour le meilleur mot si le score est supérieur
+                    if can_place_word(board, word, words[2][0] - len(word) + len(words[0]), words[2][1], words[1]):
+                        score = board.calculate_word_score(word, words[2][0] - len(word) + len(words[0]), words[2][1],
+                                                           words[1], letter_scores)
                         if score > best_score:
                             best_word = word
                             best_score = score
-                            best_position = (words[2][0]-len(word)+len(words[0]), words[2][1])
+                            best_position = (words[2][0] - len(word) + len(words[0]), words[2][1])
                             best_direction = words[1]
-                    
-
 
     return best_word, best_score, best_position, best_direction
 
